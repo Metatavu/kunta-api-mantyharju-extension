@@ -31,8 +31,6 @@
           break;
         }
         
-        print_r($listOptions);
-        
         $posts = get_posts($listOptions); 
         
         $twig = new \Twig_Environment(new \Twig_Loader_Filesystem( __DIR__ . '/../templates'));
@@ -71,8 +69,6 @@
               ];
             }
           }
-          
-          
           
           $movies[] = [
             id => $post->ID,
