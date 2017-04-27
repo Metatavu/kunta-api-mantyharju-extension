@@ -1,0 +1,16 @@
+<div class="kunta-api-movie-list">
+{% for movie in movies %}
+  <div class="kunta-api-movie" 
+    data-trailer-url="{{ movie.trailerUrl }}"
+    data-title="{{ movie.title }}"
+    data-showtimes="{{ movie.showtimes|json_encode }}"
+    data-age-limit="{{ movie.ageLimit }}"
+    data-runtime="{{ movie.runTime }}"
+    data-price="{{ movie.price }}"
+    data-classifications="{{ movie.classifications|json_encode }}"
+    data-description="{{ movie.description }}"
+    data-trailer-url="{{ movie.trailerUrl }}">
+    <img class="wp-image-{{ movie.imageId }}" src="{{ movie.imageUrl }}">
+  </div>
+{% endfor %}  
+</div>
