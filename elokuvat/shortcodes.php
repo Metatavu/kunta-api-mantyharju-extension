@@ -11,6 +11,7 @@
       
       public function __construct() {
         add_shortcode('kunta_api_mantyharju_elokuva_lista', [$this, 'movieListShortcode']);
+        add_action('edit_post', [$this, "onEditPost"]);
       }
       
       public function movieListShortcode($tagAttrs) {
@@ -30,8 +31,6 @@
             $listOptions['orderby'] = 'date';
           break;
         }
-        
-        print_r($listOptions);
         
         $posts = get_posts($listOptions); 
         
@@ -72,8 +71,6 @@
             }
           }
           
-          
-          
           $movies[] = [
             id => $post->ID,
             imageId => $imageId,
@@ -93,6 +90,31 @@
         return $twig->render("movie-list.twig", [
           movies => $movies  
         ]);
+      }
+      
+      public function onEditPost($postId) {
+        $postType = get_post_type($postId);
+        if ($postType == 'mantyharju-elokuva') {
+          foreach ($this->getPagesWithShortcode() as $page) {
+            do_action('edit_post_related', $page->ID, $page);
+          }
+        }
+      }
+      
+      private function getPagesWithShortcode() {
+        $result = [];
+        
+        $query = new \WP_Query([
+          'post_type' => 'page',
+          's' => "[kunta_api_mantyharju_elokuva_lista"  
+        ]);
+
+        while ($query->have_posts()) {
+          $post = $query->next_post();
+          $result[] = $post;
+        }
+        
+        return $result;
       }
       
     }
