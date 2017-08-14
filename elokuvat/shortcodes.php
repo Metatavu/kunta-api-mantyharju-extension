@@ -20,7 +20,8 @@
         ], $tagAttrs);
         
         $listOptions = [
-          'post_type' => 'mantyharju-elokuva'
+          'post_type' => 'mantyharju-elokuva',
+          'numberposts' => -1
         ];
         
         switch ($attrs['order']) {
