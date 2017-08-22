@@ -9,7 +9,9 @@
     data-price="{{ movie.price }}"
     data-classifications="{{ movie.classifications|json_encode }}"
     data-description="{{ movie.description }}"
-    data-trailer-url="{{ movie.trailerUrl }}">
+    data-trailer-url="{{ movie.trailerUrl }}"
+    data-director="{{ movie.director }}"
+    data-cast="{{ movie.cast }}">
     <img class="wp-image-{{ movie.imageId }}" src="{{ movie.imageUrl }}">
   </div>
 {% endfor %}  

@@ -46,6 +46,8 @@
           $price = get_post_meta($post->ID, "ticketprice", true);
           $trailerUrl = get_post_meta($post->ID, "trailerurl", true);
           $showtimeCount = get_post_meta($post->ID, "showtimes", true);
+          $director = get_post_meta($post->ID, "director", true);
+          $cast = get_post_meta($post->ID, "cast", true);
           $imageId = get_post_thumbnail_id($post->ID);
           
           $oldTimezone = date_default_timezone_get();
@@ -83,7 +85,9 @@
             runTime => $runTime,
             price => $price,
             trailerUrl => $trailerUrl,
-            description => $post->post_content
+            description => $post->post_content,
+            director => $director,
+            cast => $cast
           ];
           
         }
