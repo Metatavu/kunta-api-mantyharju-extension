@@ -1,0 +1,28 @@
+{% for movie in movies %}
+<h2>{{ movie.title }}</h2>    
+{% if movie.imageUrl %}
+<p><img class="wp-image-{{ movie.imageId }}" src="{{ movie.imageUrl }}"/></p>
+{% endif %}
+{% if movie.director %}
+<p>Ohjaus: {{ movie.director }}</p>
+{% endif %}
+{% if movie.cast %}
+<p>N&auml;yttelij&auml;t: {{ movie.cast }}</p> 
+{% endif %}
+{% spaceless %}
+{% if movie.classifications %}
+<p>
+  Genret: 
+  {% for classification in movie.classifications %}
+    {{ classification.name }}{% if loop.length - 1 == loop.index %} ja {% elseif not loop.last %}, {% endif %}
+  {% endfor %}
+</p>    
+{% endif %}
+{% endspaceless %}
+{% if movie.description %}
+<p>{{ movie.description | raw }}</p>    
+{% endif %}
+{% if movie.trailerUrl %}
+<p><a href="{{ movie.trailerUrl }}">{{ movie.trailerUrl }}</a></p>
+{% endif %}
+{% endfor %}

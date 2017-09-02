@@ -9,8 +9,12 @@
     
     class Shortcodes {
       
+      private $twig;
+      
       public function __construct() {
+        $this->twig = new \Twig_Environment(new \Twig_Loader_Filesystem( __DIR__ . '/../templates'));
         add_shortcode('kunta_api_mantyharju_elokuva_lista', [$this, 'movieListShortcode']);
+        add_shortcode('kunta_api_mantyharju_elokuva_lista_tulevat', [$this, 'upcomingMovieListShortcode']);
         add_action('edit_post', [$this, "onEditPost"]);
       }
       
@@ -19,80 +23,16 @@
           'order' => "natural"
         ], $tagAttrs);
         
-        $listOptions = [
-          'post_type' => 'mantyharju-elokuva',
-          'numberposts' => -1
-        ];
+        $movies = $this->getMovieDatas($this->listMovies($attrs['order']), false);
         
-        switch ($attrs['order']) {
-          case 'title':
-            $listOptions['orderby'] = 'title';
-          break;
-          case 'date':
-            $listOptions['orderby'] = 'date';
-          break;
-        }
-        
-        $posts = get_posts($listOptions); 
-        
-        $twig = new \Twig_Environment(new \Twig_Loader_Filesystem( __DIR__ . '/../templates'));
-        
-        $movies = [];
-        
-        foreach ($posts as $post) {
-          $showtimes = [];
-          $ageLimit = get_post_meta($post->ID, "agelimit", true);
-          $runTime = get_post_meta($post->ID, "runtime", true);
-          $price = get_post_meta($post->ID, "ticketprice", true);
-          $trailerUrl = get_post_meta($post->ID, "trailerurl", true);
-          $showtimeCount = get_post_meta($post->ID, "showtimes", true);
-          $director = get_post_meta($post->ID, "director", true);
-          $cast = get_post_meta($post->ID, "cast", true);
-          $imageId = get_post_thumbnail_id($post->ID);
-          
-          $oldTimezone = date_default_timezone_get();
-          try {
-            date_default_timezone_set("Europe/Helsinki");
-            for ($i = 0; $i < $showtimeCount; $i++) {
-              $showtime = get_post_meta($post->ID, "showtimes_" . $i . "_datetime", true);
-              $showtimes[] = date("c", strtotime($showtime));
-            }
-          } finally {
-            date_default_timezone_set($oldTimezone);
-          }
-          
-          $classifications = [];
-          $classificationIds = get_post_meta($post->ID, "classification", true);
-          
-          foreach ($classificationIds as $classificationId) {
-            $term = get_term(intval($classificationId));
-            if ($term) {
-              $classifications[] = [
-                name => $term->name,
-                slug => $term->slug
-              ];
-            }
-          }
-          
-          $movies[] = [
-            id => $post->ID,
-            imageId => $imageId,
-            imageUrl => wp_get_attachment_url($imageId),
-            title => $post->post_title,
-            showtimes => $showtimes,
-            classifications => $classifications,
-            ageLimit => $ageLimit,
-            runTime => $runTime,
-            price => $price,
-            trailerUrl => $trailerUrl,
-            description => $post->post_content,
-            director => $director,
-            cast => $cast
-          ];
-          
-        }
-        
-        return $twig->render("movie-list.twig", [
+        return $this->twig->render("movie-list.twig", [
+          movies => $movies  
+        ]);
+      }
+      
+      public function upcomingMovieListShortcode() {
+        $movies = $this->getMovieDatas($this->listMovies('date'), true);
+        return $this->twig->render("upcoming-movie-list.twig", [
           movies => $movies  
         ]);
       }
@@ -106,12 +46,103 @@
         }
       }
       
-      private function getPagesWithShortcode() {
+      private function getMovieDatas($movies, $onlyUpcoming) {
+        $result = [];
+        
+        foreach ($movies as $movie) {
+          $showtimes = [];
+          $ageLimit = get_post_meta($movie->ID, "agelimit", true);
+          $runTime = get_post_meta($movie->ID, "runtime", true);
+          $price = get_post_meta($movie->ID, "ticketprice", true);
+          $trailerUrl = get_post_meta($movie->ID, "trailerurl", true);
+          $showtimeCount = get_post_meta($movie->ID, "showtimes", true);
+          $director = get_post_meta($movie->ID, "director", true);
+          $cast = get_post_meta($movie->ID, "cast", true);
+          $imageId = get_post_thumbnail_id($movie->ID);
+          $comingShows = false;
+          $pastShows = false;
+          $now = time();
+          
+          $oldTimezone = date_default_timezone_get();
+          try {
+            date_default_timezone_set("Europe/Helsinki");
+            for ($i = 0; $i < $showtimeCount; $i++) {
+              $showtime = strtotime(get_post_meta($movie->ID, "showtimes_" . $i . "_datetime", true));
+              
+              if ($showtime > $now) {
+                $comingShows = true;
+              } else {
+                $pastShows = true;
+              }
+              
+              $showtimes[] = date("c", $showtime);
+            }
+          } finally {
+            date_default_timezone_set($oldTimezone);
+          }
+          
+          if ($onlyUpcoming && $pastShows) {
+            continue;
+          }
+          
+          $classifications = [];
+          $classificationIds = get_post_meta($movie->ID, "classification", true);
+          if ($classificationIds) {
+            foreach ($classificationIds as $classificationId) {
+              $term = get_term(intval($classificationId));
+              if ($term) {
+                $classifications[] = [
+                  name => $term->name,
+                  slug => $term->slug
+                ];
+              }
+            }
+          }
+          
+          $result[] = [
+            id => $movie->ID,
+            imageId => $imageId,
+            imageUrl => wp_get_attachment_url($imageId),
+            title => $movie->post_title,
+            showtimes => $showtimes,
+            classifications => $classifications,
+            ageLimit => $ageLimit,
+            runTime => $runTime,
+            price => $price,
+            trailerUrl => $trailerUrl,
+            description => $movie->post_content,
+            director => $director,
+            cast => $cast
+          ]; 
+        }
+        
+        return $result;
+      }
+      
+      private function listMovies($order) {
+        $listOptions = [
+          'post_type' => 'mantyharju-elokuva',
+          'numberposts' => -1
+        ];
+        
+        switch ($order) {
+          case 'title':
+            $listOptions['orderby'] = 'title';
+          break;
+          case 'date':
+            $listOptions['orderby'] = 'date';
+          break;
+        }
+        
+        return get_posts($listOptions); 
+      }
+      
+      private function getPagesWithShortcode($shortcode) {
         $result = [];
         
         $query = new \WP_Query([
           'post_type' => 'page',
-          's' => "[kunta_api_mantyharju_elokuva_lista"  
+          's' => "[$shortcode"  
         ]);
 
         while ($query->have_posts()) {
@@ -129,5 +160,5 @@
   add_action('kunta_api_init', function () {  
     new Shortcodes();
   });
-  
+        
 ?>
