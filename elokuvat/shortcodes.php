@@ -40,7 +40,7 @@
       public function onEditPost($postId) {
         $postType = get_post_type($postId);
         if ($postType == 'mantyharju-elokuva') {
-          foreach ($this->getPagesWithShortcode() as $page) {
+          foreach ($this->getPagesWithShortcodes(['kunta_api_mantyharju_elokuva_lista', 'kunta_api_mantyharju_elokuva_lista_tulevat']) as $page) {
             do_action('edit_post_related', $page->ID, $page);
           }
         }
@@ -135,6 +135,17 @@
         }
         
         return get_posts($listOptions); 
+      }
+      
+      private function getPagesWithShortcodes($shortcodes) {
+        $result = [];
+        
+        foreach ($shortcodes as $shortcode) {
+          $pages = $this->getPagesWithShortcode($shortcode);
+          $result = array_merge($result, $pages);
+        }
+        
+        return $result;
       }
       
       private function getPagesWithShortcode($shortcode) {
