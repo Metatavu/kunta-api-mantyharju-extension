@@ -23,15 +23,19 @@
           'order' => "natural"
         ], $tagAttrs);
         
-        $movies = $this->getMovieDatas($this->listMovies($attrs['order']), false);
+        $movies = $this->getMovieDatas($this->listMovies($attrs['order']), false, true, 'now');
         
         return $this->twig->render("movie-list.twig", [
           movies => $movies  
         ]);
       }
       
-      public function upcomingMovieListShortcode() {
-        $movies = $this->getMovieDatas($this->listMovies('date'), true);
+      public function upcomingMovieListShortcode($tagAttrs) {
+        $attrs = shortcode_atts([
+          'upcoming-before' => "now"
+        ], $tagAttrs);
+        
+        $movies = $this->getMovieDatas($this->listMovies('date'), true, false, $attrs['upcoming-before']);
         return $this->twig->render("upcoming-movie-list.twig", [
           movies => $movies  
         ]);
@@ -46,7 +50,7 @@
         }
       }
       
-      private function getMovieDatas($movies, $onlyUpcoming) {
+      private function getMovieDatas($movies, $onlyUpcoming, $onlyWithShowtimes, $upcomingBefore) {
         $result = [];
         
         foreach ($movies as $movie) {
@@ -61,7 +65,7 @@
           $imageId = get_post_thumbnail_id($movie->ID);
           $comingShows = false;
           $pastShows = false;
-          $now = time();
+          $upcomingTime = strtotime($upcomingBefore);
           
           $oldTimezone = date_default_timezone_get();
           try {
@@ -69,7 +73,7 @@
             for ($i = 0; $i < $showtimeCount; $i++) {
               $showtime = strtotime(get_post_meta($movie->ID, "showtimes_" . $i . "_datetime", true));
               
-              if ($showtime > $now) {
+              if ($showtime > $upcomingTime) {
                 $comingShows = true;
               } else {
                 $pastShows = true;
@@ -82,6 +86,10 @@
           }
           
           if ($onlyUpcoming && $pastShows) {
+            continue;
+          }
+          
+          if ($onlyWithShowtimes && !$pastShows && !$comingShows) {
             continue;
           }
           
