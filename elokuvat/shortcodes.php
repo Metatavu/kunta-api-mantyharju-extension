@@ -14,44 +14,52 @@
       public function __construct() {
         $this->twig = new \Twig_Environment(new \Twig_Loader_Filesystem( __DIR__ . '/../templates'));
         add_shortcode('kunta_api_mantyharju_elokuva_lista', [$this, 'movieListShortcode']);
-        add_shortcode('kunta_api_mantyharju_elokuva_lista_tulevat', [$this, 'upcomingMovieListShortcode']);
         add_action('edit_post', [$this, "onEditPost"]);
       }
       
       public function movieListShortcode($tagAttrs) {
-        $attrs = shortcode_atts([
-          'order' => "natural"
-        ], $tagAttrs);
+        $oldTimezone = date_default_timezone_get();
+        try {
+          date_default_timezone_set("Europe/Helsinki");
         
-        $movies = $this->getMovieDatas($this->listMovies($attrs['order']), false, true, 'now');
-        
-        return $this->twig->render("movie-list.twig", [
-          movies => $movies  
-        ]);
-      }
-      
-      public function upcomingMovieListShortcode($tagAttrs) {
-        $attrs = shortcode_atts([
-          'upcoming-before' => "now"
-        ], $tagAttrs);
-        
-        $movies = $this->getMovieDatas($this->listMovies('date'), true, false, $attrs['upcoming-before']);
-        return $this->twig->render("upcoming-movie-list.twig", [
-          movies => $movies  
-        ]);
+          $attrs = shortcode_atts([
+            'order' => "natural",
+            'without-showtimes' => "false",
+            'first-showtime-after' => null,
+            'last-showtime-after' => null,
+            'template' => 'movie-list'
+          ], $tagAttrs);
+
+          $movies = $this->getMovieDatas($this->listMovies($attrs['order']), 
+            $attrs['without-showtimes'] == "true", 
+            $attrs['first-showtime-after'], 
+            $attrs['last-showtime-after']
+          );
+
+          $template = $attrs['template'];
+
+          return $this->twig->render("$template.twig", [
+            movies => $movies  
+          ]);
+        } finally {
+          date_default_timezone_set($oldTimezone);
+        }
       }
       
       public function onEditPost($postId) {
         $postType = get_post_type($postId);
         if ($postType == 'mantyharju-elokuva') {
-          foreach ($this->getPagesWithShortcodes(['kunta_api_mantyharju_elokuva_lista', 'kunta_api_mantyharju_elokuva_lista_tulevat']) as $page) {
+          foreach ($this->getPagesWithShortcodes(['kunta_api_mantyharju_elokuva_lista']) as $page) {
             do_action('edit_post_related', $page->ID, $page);
           }
         }
       }
       
-      private function getMovieDatas($movies, $onlyUpcoming, $onlyWithShowtimes, $upcomingBefore) {
+      private function getMovieDatas($movies, $withoutShowtimes, $firstShowtimeAfter, $lastShowtimeAfter) {
         $result = [];
+        
+        $firstShowtimeAfterTime = $firstShowtimeAfter ? strtotime($firstShowtimeAfter) : null;
+        $lastShowtimeAfterTime = $lastShowtimeAfter ? strtotime($lastShowtimeAfter) : null;
         
         foreach ($movies as $movie) {
           $showtimes = [];
@@ -63,35 +71,25 @@
           $director = get_post_meta($movie->ID, "director", true);
           $cast = get_post_meta($movie->ID, "cast", true);
           $imageId = get_post_thumbnail_id($movie->ID);
-          $comingShows = false;
-          $pastShows = false;
-          $upcomingTime = strtotime($upcomingBefore);
+          $firstShowtime = null;
+          $lastShowtime = null;
           
           $oldTimezone = date_default_timezone_get();
           try {
             date_default_timezone_set("Europe/Helsinki");
             for ($i = 0; $i < $showtimeCount; $i++) {
               $showtime = strtotime(get_post_meta($movie->ID, "showtimes_" . $i . "_datetime", true));
-              
-              if ($showtime > $upcomingTime) {
-                $comingShows = true;
-              } else {
-                $pastShows = true;
-              }
-              
+              $firstShowtime = $firstShowtime == null ? $showtime : min($firstShowtime, $showtime);
+              $lastShowtime = $lastShowtime == null ? $showtime : max($lastShowtime, $showtime);
               $showtimes[] = date("c", $showtime);
             }
           } finally {
             date_default_timezone_set($oldTimezone);
           }
           
-          if ($onlyUpcoming && $pastShows) {
+          if ($this->isFilteredByShowtimes($withoutShowtimes, $firstShowtimeAfterTime, $lastShowtimeAfterTime, $firstShowtime, $lastShowtime)) {
             continue;
-          }
-          
-          if ($onlyWithShowtimes && !$pastShows && !$comingShows) {
-            continue;
-          }
+          } 
           
           $classifications = [];
           $classificationIds = get_post_meta($movie->ID, "classification", true);
@@ -125,6 +123,28 @@
         }
         
         return $result;
+      }
+   
+      private function isFilteredByShowtimes($withoutShowtimes, $firstShowtimeAfterTime, $lastShowtimeAfterTime, $firstShowtime, $lastShowtime) {
+        if ($withoutShowtimes && $firstShowtime == null && $lastShowtime == null) {
+          // Allow without showtimes
+          return false;
+        }
+        
+        if (!$withoutShowtimes && $firstShowtime == null && $lastShowtime == null) {
+          // Not allowed without showtimes
+          return true;
+        }
+
+        if (($lastShowtimeAfterTime != null) && ((!$lastShowtime) || ($lastShowtimeAfterTime > $lastShowtime))) {
+          return true;
+        }
+
+        if ($firstShowtimeAfterTime != null && ((!$firstShowtime) || ($firstShowtimeAfterTime > $firstShowtime))) {
+          return true;
+        }
+        
+        return false;
       }
       
       private function listMovies($order) {
