@@ -101,6 +101,22 @@ acf_add_local_field_group(array (
 			'placeholder' => '',
 		),
 		array (
+			'key' => 'field_59006c8dsass',
+			'label' => 'Osta lippu',
+			'name' => 'ticketsalesurl',
+			'type' => 'url',
+			'instructions' => 'Tähän kenttään laitetaan linkki lipunmyyntiin.',
+			'required' => 0,
+			'conditional_logic' => 0,
+			'wrapper' => array (
+				'width' => '',
+				'class' => '',
+				'id' => '',
+			),
+			'default_value' => '',
+			'placeholder' => '',
+		),
+		array (
 			'key' => 'field_5900727b894e7',
 			'label' => 'Näytösajat',
 			'name' => 'showtimes',

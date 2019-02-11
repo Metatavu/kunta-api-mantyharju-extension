@@ -67,6 +67,7 @@
           $runTime = get_post_meta($movie->ID, "runtime", true);
           $price = get_post_meta($movie->ID, "ticketprice", true);
           $trailerUrl = get_post_meta($movie->ID, "trailerurl", true);
+          $ticketSalesUrl = get_post_meta($movie->ID, "ticketsalesurl", true); 
           $showtimeCount = get_post_meta($movie->ID, "showtimes", true);
           $director = get_post_meta($movie->ID, "director", true);
           $cast = get_post_meta($movie->ID, "cast", true);
@@ -116,6 +117,7 @@
             runTime => $runTime,
             price => $price,
             trailerUrl => $trailerUrl,
+            ticketSalesUrl => $ticketSalesUrl,
             description => $movie->post_content,
             director => $director,
             cast => $cast
